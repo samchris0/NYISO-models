@@ -1,0 +1,3 @@
+[submodule "nyiso-api"]
+	path = nyiso-api
+	url = https://github.com/samchris0/NYISO-api
