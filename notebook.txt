@@ -1,3 +1,6 @@
 3/8
 Building model layer.
 Starting with ARIMA model
+updated real time lbmp zonal to separate ingestion and query
+to do: update other real time paths
+

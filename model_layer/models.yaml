@@ -1,0 +1,23 @@
+models:
+  - name: seasonal_naive
+    enabled: true
+    updates: false
+    ptids: [61757]
+    retrain_every_days: 1
+    predict_every_minutes: 5
+    forecast_horizons_minutes: 5
+    training_window_days: 1
+    hyperparameters:
+
+
+  - name: auto_arima
+    enabled: true
+    updates: true
+    ptids: [61757]
+    retrain_every_days: [1,7]
+    predict_every_minutes: 5
+    forecast_horizons_minutes: 5
+    training_window_days: 31
+    hyperparameters:
+      seasonal: true
+      m: 288
