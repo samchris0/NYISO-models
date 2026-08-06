@@ -1,5 +1,4 @@
-import models
 from models import *
 
-MODEL_REGISTRY = {'auto_arima':AutoARIMA,
+MODEL_REGISTRY = {'auto_arima': ARIMA,
                   'seasonal_naive':SeasonalNaive}

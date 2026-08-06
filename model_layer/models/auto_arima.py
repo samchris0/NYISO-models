@@ -8,13 +8,8 @@ from pmdarima.arima import AutoARIMA
 
 class ARIMA(BaseModel):
     name = "auto_arima"
-    
-    def __init__(self, ptid: int, hyperparams: dict):
-        self.ptid = ptid
-        self.hyperparams = hyperparams
-        self.model = None
 
-    def fetch_training_data(self, training_window_days):
+    def fetch_training_data(self, training_window_days) -> tuple[pd.Series, pd.Series]:
         now = datetime.now()
 
         # Floor to the closest 5-minute interval

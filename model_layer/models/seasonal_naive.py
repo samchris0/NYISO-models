@@ -1,7 +1,9 @@
+from datetime import datetime, time, timedelta
+
+import joblib
 import numpy as np
 import pandas as pd
-
-from datetime import datetime, time, timedelta
+from pathlib import Path
 
 from api_client import get_real_time_lbmp_zonal
 from base import BaseModel
@@ -9,12 +11,7 @@ from base import BaseModel
 class SeasonalNaive(BaseModel):
     name = "seasonal_naive"
 
-    def __init__(self, ptid: int, hyperparams: dict):
-        self.ptid = ptid
-        self.hyperparams = hyperparams
-        self.model = None
-
-    def fetch_training_data(self, training_window_days):
+    def fetch_training_data(self, training_window_days) -> tuple[pd.Series, pd.Series]:
         self.training_window_days = training_window_days
         
         stop_time = datetime.combine(datetime.today(), time.min)
@@ -73,4 +70,6 @@ class SeasonalNaive(BaseModel):
             raise RuntimeError(
                 "Incorrect time index provided to model for prediction"
             )
+        
+        
 

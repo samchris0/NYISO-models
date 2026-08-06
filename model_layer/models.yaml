@@ -3,21 +3,30 @@ models:
     enabled: true
     updates: false
     ptids: [61757]
-    retrain_every_days: 1
-    predict_every_minutes: 5
-    forecast_horizons_minutes: 5
-    training_window_days: 1
+    training_window_days: 7
+    forecast_horizons_minutes: [5]
+    predict_schedule:
+      type: interval
+      minutes: 5
+    retrain_schedule:
+      type: cron
+      days: 1
     hyperparameters:
+      seasonal_period_days: 1
 
-
-  - name: auto_arima
+  - name: auto_arima_daily
+    model_type: auto_arima
     enabled: true
     updates: true
     ptids: [61757]
-    retrain_every_days: [1,7]
-    predict_every_minutes: 5
-    forecast_horizons_minutes: 5
     training_window_days: 31
+    forecast_horizons_minutes: [5]
+    predict_schedule:
+      type: interval
+      minutes: 5
+    retrain_schedule:
+      type: interval
+      days: 1
     hyperparameters:
       seasonal: true
       m: 288

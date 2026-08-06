@@ -8,8 +8,12 @@ from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
 
 from config import load_config
-from jobs import train_model, predict_model
+from jobs import train_model, predict_model, update_model
 
+
+
+
+""""
 load_dotenv()
 jobstores = {"default": SQLAlchemyJobStore(url=os.getenv("DATABASE_URL"))}  # persists jobs across restarts
 scheduler = BackgroundScheduler(jobstores=jobstores, timezone="UTC")
@@ -35,6 +39,7 @@ for model_config in load_config("models.yaml")["models"]:
             coalesce=True, 
             misfire_grace_time=300,
         )
+
         scheduler.add_job(
             predict_model,
             trigger = model_config["predict_schedule"],
@@ -45,6 +50,13 @@ for model_config in load_config("models.yaml")["models"]:
             misfire_grace_time=60,
         )
 
+        if model_config["update"]:
+            scheduler.add_job(
+                update_model,
+                trigger = model_config
+            )
+
 scheduler.start()
 
 # ptids = [61757,61754,61760,61753,61844,61758,61762,61756,61759,61761,61755,61845,61846,61847,61752]
+"""
