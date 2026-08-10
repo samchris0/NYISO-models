@@ -1,4 +1,4 @@
-from models import *
+from model_layer.models import *
 
 MODEL_REGISTRY = {'auto_arima': ARIMA,
                   'seasonal_naive':SeasonalNaive}

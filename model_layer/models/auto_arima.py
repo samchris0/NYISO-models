@@ -1,15 +1,15 @@
 from datetime import datetime, time, timedelta
 import pandas as pd
 
-from api_client import get_real_time_lbmp_zonal
-
-from base import BaseModel
 from pmdarima.arima import AutoARIMA
+
+from model_layer.api_client import get_real_time_lbmp_zonal
+from model_layer.models.base import BaseModel
 
 class ARIMA(BaseModel):
     name = "auto_arima"
 
-    def fetch_training_data(self, training_window_days) -> tuple[pd.Series, pd.Series]:
+    def fetch_training_data(self, training_window_days):
         now = datetime.now()
 
         # Floor to the closest 5-minute interval
@@ -18,17 +18,12 @@ class ARIMA(BaseModel):
 
         data = get_real_time_lbmp_zonal(start_time,stop_time,self.ptid)
 
-        self.X = data["timestamp"]
-        self.y = data["lbmp"]
+        X = data["timestamp"]
+        y = data["lbmp"]
 
-        return self.X, self.y
+        return X, y
 
-    def train(self, X=None, y=None):
-        
-        if X is None:
-            X = self.X
-        if y is None:
-            y = self.y
+    def train(self, X, y):
 
         data = pd.Series(
             data=y.to_numpy(),

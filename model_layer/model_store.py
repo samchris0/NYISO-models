@@ -8,7 +8,7 @@ import joblib
 ARTIFACT_ROOT_PATH = Path("model_layer/artifacts")
 
 #create store function
-def create_artifact_path(model_type: str, ptid: int) -> tuple[UUID, Path]
+def create_artifact_path(model_type: str, ptid: int) -> tuple[UUID, Path]:
     version = uuid4()
 
     artifact_path = ( 

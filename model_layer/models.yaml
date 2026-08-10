@@ -1,10 +1,11 @@
 models:
   - name: seasonal_naive
+    model_type: seasonal_naive
     enabled: true
     updates: false
-    ptids: [61757]
+    ptid: 61757
     training_window_days: 7
-    forecast_horizons_minutes: [5]
+    forecast_horizons_minutes: 5
     predict_schedule:
       type: interval
       minutes: 5
@@ -18,9 +19,9 @@ models:
     model_type: auto_arima
     enabled: true
     updates: true
-    ptids: [61757]
+    ptid: 61757
     training_window_days: 31
-    forecast_horizons_minutes: [5]
+    forecast_horizons_minutes: 5
     predict_schedule:
       type: interval
       minutes: 5

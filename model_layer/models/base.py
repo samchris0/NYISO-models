@@ -5,6 +5,7 @@ from uuid import UUID
 
 from abc import ABC, abstractmethod
 import joblib
+import pandas as pd
 from pathlib import Path
 
 class BaseModel(ABC):
@@ -17,7 +18,7 @@ class BaseModel(ABC):
 
 
     @abstractmethod
-    def fetch_training_data(self,training_window_days):
+    def fetch_training_data(self,training_window_days) -> tuple[pd.Series, pd.Series]:
         """Pull whatever data this model needs from the API."""
         ...
 
@@ -58,13 +59,14 @@ class BaseModel(ABC):
             os.replace(temporary_path,destination)
 
             # update active models database
+            """
             update_model_version(
                 version_id = version,
                 model_type = self.name,
                 ptid = self.ptid,
                 artifact_path = str(destination)
             )
-        
+            """
         except:
             # if table update fails, delete unregistered model
             destination.unlink(missing_ok=True)
@@ -75,7 +77,13 @@ class BaseModel(ABC):
         finally:
             temporary_path.unlink(missing_ok=True)
 
-
-
     def load(self, path: Path):
-        self.model = joblib.load(path)
+        artifact = joblib.load(path)
+
+        if artifact["model_type"] != self.name:
+            raise ValueError("Artifact model type does not match")
+        if artifact["ptid"] != self.ptid:
+            raise ValueError("Artifact PTID does not match")
+
+        self.model = artifact["state"]
+        self.hyperparams = artifact["hyperparameters"]

@@ -23,8 +23,8 @@ def get_real_time_lbmp_zonal(
     url = f"{base_url}/lbmp/real-time/zonal"
 
     params = {
-        "start": start.isoformat(),
-        "end": end.isoformat(),
+        "start": start.strftime("%Y-%m-%d %H:%M:%S"),
+        "end": end.strftime("%Y-%m-%d %H:%M:%S"),
         "ptid": str(ptid),
     }
 

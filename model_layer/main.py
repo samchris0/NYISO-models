@@ -7,10 +7,21 @@ from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
 
-from config import load_config
-from jobs import train_model, predict_model, update_model
+#from config import load_config
+from model_layer.celery.jobs import train_model, predict_model, update_model
+from model_layer.config import load_config
 
+from model_layer.db.init_db import init_db
 
+init_db()
+
+config = load_config("models.yaml")
+
+for model_config in config["models"]:
+    
+    train_model(model_config)
+
+    continue
 
 
 """"

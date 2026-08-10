@@ -3,7 +3,7 @@ from typing import Any
 
 import yaml
 
-def load_config(filename: str = "models.yml") -> dict[str, Any]:
+def load_config(filename: str = "models.yaml") -> dict[str, Any]:
     config_path = Path(__file__).with_name(filename)
 
     with config_path.open(encoding="utf-8") as config_file:

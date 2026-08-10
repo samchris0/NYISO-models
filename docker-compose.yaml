@@ -6,8 +6,6 @@ services:
       POSTGRES_USER: ${PG_USER}
       POSTGRES_PASSWORD: ${PG_PASSWORD}
       POSTGRES_DB: ${PG_DATABASE}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -18,22 +16,34 @@ services:
 
   nyiso-api:
     build: .
+    command: python -u -m nyiso_api.main
     env_file: .env
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
     volumes:
-      - ./nyiso-api:/app/nyiso-api
+      - ./nyiso_api:/app/nyiso_api
     ports:
-      - "5000:5000"
+      - "5001:5050"
     depends_on:
       db:
         condition: service_healthy
 
-  frontend:
+  model-layer:
     build: .
-    volumes:
-      - ./frontend:/app/frontend
-    command: python -u -m frontend.main
-    ports:
-      - "8050:8050"
+    command: python -u -m model_layer.main
+    env_file: .env
+    environment:
+      NYISO_API_BASE_URL: http://nyiso-api:5050
+      DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
     depends_on:
-      - api
+      db:
+        condition: service_healthy
+      nyiso-api:
+        condition: service_started
+    volumes:
+      - ./model_layer:/app/model_layer
+      - model_artifacts:/app/model_layer/artifacts
 
+volumes:
+  postgres_data:
+  model_artifacts:

@@ -5,13 +5,13 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from api_client import get_real_time_lbmp_zonal
-from base import BaseModel
+from model_layer.api_client import get_real_time_lbmp_zonal
+from model_layer.models.base import BaseModel
 
 class SeasonalNaive(BaseModel):
     name = "seasonal_naive"
 
-    def fetch_training_data(self, training_window_days) -> tuple[pd.Series, pd.Series]:
+    def fetch_training_data(self, training_window_days):
         self.training_window_days = training_window_days
         
         stop_time = datetime.combine(datetime.today(), time.min)
@@ -19,18 +19,13 @@ class SeasonalNaive(BaseModel):
 
         data = get_real_time_lbmp_zonal(start_time,stop_time,self.ptid)
 
-        self.X = data["timestamp"]
-        self.y = data["lbmp"]
+        X = data["timestamp"]
+        y = data["lbmp"]
 
-        return self.X, self.y
+        return X, y
     
-    def train(self, X=None, y=None):
+    def train(self, X, y):
         seasonal_period = self.training_window_days*288 #number of days times 288 for 5 min intervals
-
-        if X is None:
-            X = self.X
-        if y is None:
-            y = self.y
 
         history = pd.Series(
             data=y.to_numpy(),
