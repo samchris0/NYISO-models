@@ -1,13 +1,13 @@
 from model_layer.model_store import create_artifact_path
 from model_layer.registry import MODEL_REGISTRY
 
-
 def train_model(config: dict):
     model_type = config["model_type"]
     ptid = config["ptid"]
+    name = config["name"]
     
     model_class = MODEL_REGISTRY[model_type]
-    model = model_class(ptid=ptid, hyperparams=config.get("hyperparameters", {}))
+    model = model_class(name=name, ptid=ptid, hyperparams=config.get("hyperparameters", {}))
     
     model_type = model.name
 

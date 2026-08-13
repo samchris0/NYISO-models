@@ -9,7 +9,7 @@ from model_layer.api_client import get_real_time_lbmp_zonal
 from model_layer.models.base import BaseModel
 
 class SeasonalNaive(BaseModel):
-    name = "seasonal_naive"
+    type = "seasonal_naive"
 
     def fetch_training_data(self, training_window_days):
         self.training_window_days = training_window_days

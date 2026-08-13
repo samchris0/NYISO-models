@@ -1,4 +1,8 @@
 services:
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
   db:
     image: postgres:16
     restart: unless-stopped
@@ -13,7 +17,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
   nyiso-api:
     build: .
     command: python -u -m nyiso_api.main
@@ -27,7 +30,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-
   model-layer:
     build: .
     command: python -u -m model_layer.main
@@ -43,6 +45,81 @@ services:
     volumes:
       - ./model_layer:/app/model_layer
       - model_artifacts:/app/model_layer/artifacts
+
+  training-worker:
+    build: .
+    command:
+      - celery
+      - -A
+      - model_layer.celery.celery_app:app
+      - worker
+      - --queues=training
+      - --concurrency=1
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      NYISO_API_BASE_URL: http://nyiso-api:5050
+    depends_on:
+      - redis
+      - db
+      - nyiso-api
+    volumes:
+      - ./model_layer:/app/model_layer
+      - model_artifacts:/app/model_layer/artifacts
+
+  predicting-worker:
+    build: .
+    command:
+      - celery
+      - -A
+      - model_layer.celery.celery_app:app
+      - worker
+      - --queues=predicting
+      - --concurrency=2
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      NYISO_API_BASE_URL: http://nyiso-api:5050
+    depends_on:
+      - redis
+      - db
+      - nyiso-api
+    volumes:
+      - ./model_layer:/app/model_layer
+      - model_artifacts:/app/model_layer/artifacts
+
+  updating-worker:
+    build: .
+    command:
+      - celery
+      - -A
+      - model_layer.celery.celery_app:app
+      - worker
+      - --queues=updating
+      - --concurrency=2
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      NYISO_API_BASE_URL: http://nyiso-api:5050
+    depends_on:
+      - redis
+      - db
+      - nyiso-api
+    volumes:
+      - ./model_layer:/app/model_layer
+      - model_artifacts:/app/model_layer/artifacts
+
+  scheduler:
+    build: .
+    command:
+      - celery
+      - -A
+      - model_layer.celery.celery_app:app
+      - beat
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+    depends_on:
+      - redis
 
 volumes:
   postgres_data:

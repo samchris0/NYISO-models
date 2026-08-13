@@ -7,7 +7,7 @@ from model_layer.api_client import get_real_time_lbmp_zonal
 from model_layer.models.base import BaseModel
 
 class ARIMA(BaseModel):
-    name = "auto_arima"
+    type = "auto_arima"
 
     def fetch_training_data(self, training_window_days):
         now = datetime.now()

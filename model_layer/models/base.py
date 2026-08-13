@@ -3,6 +3,7 @@ import os
 import tempfile
 from uuid import UUID
 
+from model_layer.db.update_model_version import update_model_version
 from abc import ABC, abstractmethod
 import joblib
 import pandas as pd
@@ -11,7 +12,8 @@ from pathlib import Path
 class BaseModel(ABC):
     name: str  # set by subclass
 
-    def __init__(self, ptid: int, hyperparams: dict):
+    def __init__(self, name: str, ptid: int, hyperparams: dict):
+        self.name = self.name
         self.ptid = ptid
         self.hyperparams = hyperparams
         self.model = None  # the actual fitted estimator lives here
@@ -59,14 +61,13 @@ class BaseModel(ABC):
             os.replace(temporary_path,destination)
 
             # update active models database
-            """
             update_model_version(
-                version_id = version,
+                version_id = str(version),
                 model_type = self.name,
                 ptid = self.ptid,
                 artifact_path = str(destination)
             )
-            """
+            
         except:
             # if table update fails, delete unregistered model
             destination.unlink(missing_ok=True)

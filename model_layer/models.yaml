@@ -1,33 +1,41 @@
 models:
-  - name: seasonal_naive
-    model_type: seasonal_naive
-    enabled: true
-    updates: false
-    ptid: 61757
-    training_window_days: 7
-    forecast_horizons_minutes: 5
-    predict_schedule:
-      type: interval
-      minutes: 5
-    retrain_schedule:
-      type: cron
-      days: 1
-    hyperparameters:
-      seasonal_period_days: 1
+  - enabled: true
+    config:
+      name: seasonal_naive
+      model_type: seasonal_naive
+      ptid: 61757
+      training_window_days: 1
+      forecast_horizons_minutes: 5
+    tasks:
+      - task_name: tasks.predict
+        type: interval
+        minutes: 5
+      - task_name: tasks.train
+        type: cron
+        minutes: 0
+        hours: 0
 
-  - name: auto_arima_daily
-    model_type: auto_arima
-    enabled: true
-    updates: true
-    ptid: 61757
-    training_window_days: 31
-    forecast_horizons_minutes: 5
-    predict_schedule:
-      type: interval
-      minutes: 5
-    retrain_schedule:
-      type: interval
-      days: 1
-    hyperparameters:
-      seasonal: true
-      m: 288
+  - enabled: false
+    config:
+      name: auto_arima_daily
+      model_type: auto_arima
+      enabled: true
+      updates: true
+      ptid: 61757
+      training_window_days: 31
+      forecast_horizons_minutes: 5
+      hyperparameters:
+        seasonal: true
+        m: 288
+    tasks:
+      - task_name: tasks.predict
+        type: interval
+        minutes: 5
+      - task_name: tasks.train
+        type: cron
+        minutes: 0
+        hours: 0
+      - task_name: tasks.update
+        type: cron
+        minutes: "*/5"
+
