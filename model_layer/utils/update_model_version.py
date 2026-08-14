@@ -1,12 +1,14 @@
+from datetime import datetime
+
 from model_layer.db.database import SessionLocal
 from model_layer.db.tables.model_version import ModelVersion
 
-def update_model_version(version_id: str, model_type: str, ptid: int, artifact_path: str):
+def update_model_version(version_id: str, model_name: str, ptid: int, artifact_path: str, trained_at: datetime):
     with SessionLocal.begin() as db:
         current = (
             db.query(ModelVersion)
             .filter(
-                ModelVersion.model_type == model_type,
+                ModelVersion.model_name == model_name,
                 ModelVersion.ptid == ptid,
                 ModelVersion.active.is_(True),
             )
@@ -20,9 +22,10 @@ def update_model_version(version_id: str, model_type: str, ptid: int, artifact_p
         db.add(
             ModelVersion(
                 version_id=version_id,
-                model_type=model_type,
+                model_name=model_name,
                 ptid=ptid,
                 artifact_path=artifact_path,
+                trained_at=trained_at,
                 active=True,
                 updating=False,
             )

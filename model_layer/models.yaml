@@ -5,7 +5,8 @@ models:
       model_type: seasonal_naive
       ptid: 61757
       training_window_days: 1
-      forecast_horizons_minutes: 5
+      interval_minutes: 5
+      forecast_intervals: 1
     tasks:
       - task_name: tasks.predict
         type: interval
@@ -23,10 +24,11 @@ models:
       updates: true
       ptid: 61757
       training_window_days: 31
-      forecast_horizons_minutes: 5
+      interval_minutes: 5
+      forecast_intervals: 1
       hyperparameters:
         seasonal: true
-        m: 288
+        period_days: 1
     tasks:
       - task_name: tasks.predict
         type: interval
@@ -39,3 +41,4 @@ models:
         type: cron
         minutes: "*/5"
 
+# ptids = [61757,61754,61760,61753,61844,61758,61762,61756,61759,61761,61755,61845,61846,61847,61752]

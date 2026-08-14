@@ -3,17 +3,15 @@ import pandas as pd
 
 from pmdarima.arima import AutoARIMA
 
-from model_layer.api_client import get_real_time_lbmp_zonal
+from model_layer.utils.api_client import get_real_time_lbmp_zonal
 from model_layer.models.base import BaseModel
+from model_layer.utils.time import floor_to_five_minutes, now_ny
 
 class ARIMA(BaseModel):
     type = "auto_arima"
 
     def fetch_training_data(self, training_window_days):
-        now = datetime.now()
-
-        # Floor to the closest 5-minute interval
-        stop_time = now.replace(minute=(now.minute // 5) * 5, second=0, microsecond=0)
+        stop_time = floor_to_five_minutes(now_ny())
         start_time = stop_time-timedelta(days=training_window_days)
 
         data = get_real_time_lbmp_zonal(start_time,stop_time,self.ptid)
@@ -24,7 +22,7 @@ class ARIMA(BaseModel):
         return X, y
 
     def train(self, X, y):
-
+        period = self.hyperparams.get("period_days",1)*288
         data = pd.Series(
             data=y.to_numpy(),
             index=pd.to_datetime(X),
@@ -33,20 +31,30 @@ class ARIMA(BaseModel):
 
         data = data.sort_index()
 
-        model = AutoARIMA(m=288, trace=True)
+        model = AutoARIMA(m=period, trace=True)
         self.model = model
 
         model.fit(y)
 
-    def predict(self, input_datetime):
+    def predict(
+        self,
+        target_timestamps: pd.DatetimeIndex,
+        features: pd.DataFrame | None = None,
+    ) -> pd.Series:
         if self.model is None:
             raise RuntimeError(
                 "SeasonalNaive has not been trained. Call train() or load() first."
             )
         
-        values = self.model.predict(n_periods=len(input_datetime))
-        
-        return values
+        values = self.model.predict(
+            n_periods=len(target_timestamps),
+        )
+
+        return pd.Series(
+            values,
+            index=target_timestamps,
+            name="predicted_lbmp",
+        )
     
     def update(self, new_time_step):
         

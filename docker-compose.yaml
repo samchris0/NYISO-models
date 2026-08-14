@@ -30,21 +30,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
-  model-layer:
+  model-db-init:
     build: .
-    command: python -u -m model_layer.main
-    env_file: .env
+    command: python -c "from model_layer.db.init_db import init_db; init_db()"
     environment:
-      NYISO_API_BASE_URL: http://nyiso-api:5050
       DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
     depends_on:
       db:
         condition: service_healthy
-      nyiso-api:
-        condition: service_started
-    volumes:
-      - ./model_layer:/app/model_layer
-      - model_artifacts:/app/model_layer/artifacts
 
   training-worker:
     build: .
@@ -63,6 +56,7 @@ services:
       - redis
       - db
       - nyiso-api
+      - model-db-init
     volumes:
       - ./model_layer:/app/model_layer
       - model_artifacts:/app/model_layer/artifacts
@@ -84,6 +78,7 @@ services:
       - redis
       - db
       - nyiso-api
+      - model-db-init
     volumes:
       - ./model_layer:/app/model_layer
       - model_artifacts:/app/model_layer/artifacts
@@ -105,6 +100,7 @@ services:
       - redis
       - db
       - nyiso-api
+      - model-db-init
     volumes:
       - ./model_layer:/app/model_layer
       - model_artifacts:/app/model_layer/artifacts

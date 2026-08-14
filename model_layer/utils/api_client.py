@@ -6,6 +6,8 @@ from datetime import datetime
 import pandas as pd
 import requests
 
+from model_layer.utils.time import NYISO_TIMEZONE, as_ny_datetime
+
 
 NYISO_API_BASE_URL="http://nyiso-api:5000"
 
@@ -23,8 +25,9 @@ def get_real_time_lbmp_zonal(
     url = f"{base_url}/lbmp/real-time/zonal"
 
     params = {
-        "start": start.strftime("%Y-%m-%d %H:%M:%S"),
-        "end": end.strftime("%Y-%m-%d %H:%M:%S"),
+        # The API accepts NYISO local wall-clock strings, without an offset.
+        "start": as_ny_datetime(start).strftime("%Y-%m-%d %H:%M:%S"),
+        "end": as_ny_datetime(end).strftime("%Y-%m-%d %H:%M:%S"),
         "ptid": str(ptid),
     }
 
@@ -39,7 +42,13 @@ def get_real_time_lbmp_zonal(
     if data.empty:
         return data
 
-    # The current API stores and returns naive NYISO timestamps, so preserve
-    # that convention rather than incorrectly labelling them as UTC.
-    data["timestamp"] = pd.to_datetime(data["timestamp"])
+    timestamps = pd.to_datetime(data["timestamp"])
+    if timestamps.dt.tz is None:
+        data["timestamp"] = timestamps.dt.tz_localize(
+            NYISO_TIMEZONE,
+            ambiguous="infer",
+            nonexistent="shift_forward",
+        )
+    else:
+        data["timestamp"] = timestamps.dt.tz_convert(NYISO_TIMEZONE)
     return data.sort_values("timestamp").reset_index(drop=True)
