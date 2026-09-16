@@ -25,9 +25,9 @@ def get_real_time_lbmp_zonal(
     url = f"{base_url}/lbmp/real-time/zonal"
 
     params = {
-        # The API accepts NYISO local wall-clock strings, without an offset.
-        "start": as_ny_datetime(start).strftime("%Y-%m-%d %H:%M:%S"),
-        "end": as_ny_datetime(end).strftime("%Y-%m-%d %H:%M:%S"),
+        # Preserve the New York UTC offset at the HTTP boundary.
+        "start": as_ny_datetime(start).isoformat(timespec="seconds"),
+        "end": as_ny_datetime(end).isoformat(timespec="seconds"),
         "ptid": str(ptid),
     }
 
@@ -42,13 +42,13 @@ def get_real_time_lbmp_zonal(
     if data.empty:
         return data
 
-    timestamps = pd.to_datetime(data["timestamp"])
-    if timestamps.dt.tz is None:
-        data["timestamp"] = timestamps.dt.tz_localize(
-            NYISO_TIMEZONE,
-            ambiguous="infer",
-            nonexistent="shift_forward",
-        )
-    else:
-        data["timestamp"] = timestamps.dt.tz_convert(NYISO_TIMEZONE)
+    timestamps = pd.to_datetime(
+    data["timestamp"],
+    utc=True,
+)
+
+    data["timestamp"] = timestamps.dt.tz_convert(
+        NYISO_TIMEZONE
+    )
+   
     return data.sort_values("timestamp").reset_index(drop=True)

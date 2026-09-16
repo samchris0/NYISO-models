@@ -12,12 +12,21 @@ app = Celery(
 )
 
 app.conf.task_queues = (
+    Queue("ingesting"),
+    Queue("creating_jobs"),
     Queue("training"),
     Queue("predicting"),
     Queue("updating"),
+    Queue("evaluating"),
 )
 
 app.conf.task_routes = {
+    "tasks.ingest_realtime_lbmp_zonal" : {
+        "queue": "ingesting"
+    },
+    "tasks.create_jobs" : {
+        "queue": "creating_jobs"
+    },
     "tasks.train": {
         "queue": "training",
     },
@@ -27,7 +36,10 @@ app.conf.task_routes = {
     "tasks.update": {
         "queue": "updating",
     },
+    "tasks.evaluate": {
+        "queue": "evaluating"
+    },
 }
 
 app.conf.timezone = 'America/New_York' #type: ignore
-app.conf.beat_schedule = build_beat_schedule('model_layer/models.yaml')
+app.conf.beat_schedule = build_beat_schedule('model_layer/tasks.yaml')

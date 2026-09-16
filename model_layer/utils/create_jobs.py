@@ -1,0 +1,154 @@
+from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
+
+from apscheduler.triggers.cron import CronTrigger
+from sqlalchemy import or_
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
+
+from model_layer.db.tables.forecast_run import ForecastRun
+from model_layer.db.tables.model_version import ModelVersion
+from model_layer.db.tables.prediction_job import PredictionJob
+from model_layer.db.tables.training_job import TrainingJob
+from model_layer.utils.build_target_timestamps import build_target_timestamps
+
+def matching_timestamps(trigger: dict, start: datetime, end: datetime,) -> list[datetime] | None:
+    """Return matching New York timestamps within [start, end)."""
+
+    allowed_fields = {
+        "type",
+        "timezone",
+        "minutes",
+        "hours",
+        "day_of_week",
+        "day_of_month",
+        "month_of_year",
+    }
+    unknown_fields = set(trigger) - allowed_fields
+    if unknown_fields:
+        raise ValueError(
+            f"Unknown trigger fields: {sorted(unknown_fields)}"
+        )
+
+    if not trigger.get("timezone"):
+        raise ValueError("Trigger timezone is required")
+    
+    cron = CronTrigger(
+        timezone=ZoneInfo(trigger["timezone"]),
+        minute=trigger.get("minutes", "0"),
+        hour=trigger.get("hours", "*"),
+        day_of_week=trigger.get("day_of_week", "*"),
+        day=trigger.get("day_of_month", "*"),
+        month=trigger.get("month_of_year", "*"),
+        second=0,
+    )
+
+    start_utc = start.astimezone(timezone.utc)
+    end_utc = end.astimezone(timezone.utc)
+
+    if start_utc >= end_utc:
+        return []
+
+    timestamps = []
+    next_time = cron.get_next_fire_time(
+        previous_fire_time=None,
+        now=start_utc,
+    )
+
+    while next_time is not None:
+        slot = next_time.astimezone(timezone.utc)
+
+        if slot >= end_utc:
+            break
+
+        timestamps.append(slot.astimezone(ZoneInfo("America/New_York")))
+
+        next_time = cron.get_next_fire_time(
+            previous_fire_time=next_time,
+            now=slot,
+        )
+
+    return timestamps
+
+def create_missing_jobs(run, job_type, scheduled_for):
+    
+    scheduled_for = scheduled_for.astimezone(
+        ZoneInfo
+    )
+
+    if job_type == "training":
+        training = run.configuration["training"]
+        days = training["training_window_days"]
+
+        cutoff = scheduled_for
+        start = cutoff-timedelta(days=days)
+
+        statement = (
+            insert(TrainingJob)
+            .values(
+                run_id = run.id,
+                scheduled_for = scheduled_for,
+                training_data_start = start,
+                training_data_cutoff = cutoff,
+                status = "pending",
+            )
+            .on_conflict_do_nothing(
+                constrain="uq_training_job_run_slot"
+            )
+            .returning(TrainingJob.id)
+        )
+    
+    elif job_type =="prediction":
+        model = run.configuration["model"]
+        prediction = run.configuration["prediction"]
+
+        version = (
+            db.query(ModelVersion)
+            .filter(
+                ModelVersion.run_id == run.id,
+                ModelVersion.model_name == model["name"],
+                ModelVersion.ptid == model["ptid"],
+                ModelVersion.effective_start <= scheduled_for,
+                or_(
+                    ModelVersion.effective_end.is_(None),
+                    ModelVersion.effective_end > scheduled_for,
+                ),
+            )
+            .one_or_none()
+        )
+
+        if version is None:
+            return None
+        
+        targets = build_target_timestamps(
+            start_time_floor=scheduled_for,
+            interval_minutes=step,
+            forecast_intervals=count,
+        )
+
+        rows = [
+            {
+                "run_id": run.id,
+                "model_name": model["name"],
+                "ptid": model["ptid"],
+                "version_id": version.version_id,
+                "scheduled_for": scheduled_for,
+                "target_timestamp": target.to_pydatetime(),
+                "status": "pending",
+            }
+            for target in targets
+        ]
+
+        statement = (
+            insert(PredictionJob)
+            .values(rows)
+            .on_conflict_do_nothing(
+                constraint="uq_prediction_job_slot"
+            )
+            .returning(PredictionJob.id)
+        )
+
+    else:
+        raise ValueError(f"Unknown job type: {job_type!r}")
+
+    return list(db.execute(statement).scalars()) #type:ignore

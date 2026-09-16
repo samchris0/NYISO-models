@@ -1,0 +1,27 @@
+global_tasks:
+
+  - name: create_jobs
+    task_name: tasks.create_jobs
+    type: interval
+    minutes: 1
+
+  - name: dispatch-training-jobs
+    task_name: tasks.dispatch_training_jobs
+    type: interval
+    minutes: 1
+
+  - name: dispatch-prediction-jobs
+    task_name: tasks.dispatch_prediction_jobs
+    type: interval
+    minutes: 1
+
+  - name: evaluate-pending-predictions
+    task_name: tasks.evaluate
+    type: interval
+    minutes: 5
+
+  - name: ingest-current-realtime-lbmp-zonal
+    task_name: tasks.ingest_realtime_lbmp_zonal
+    type: interval
+    minutes: 5
+# ptids = [61757,61754,61760,61753,61844,61758,61762,61756,61759,61761,61755,61845,61846,61847,61752]
