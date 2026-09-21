@@ -4,11 +4,13 @@ import tempfile
 from datetime import datetime
 from uuid import UUID
 
-from model_layer.utils.update_model_version import update_model_version
 from abc import ABC, abstractmethod
 import joblib
 import pandas as pd
 from pathlib import Path
+
+from model_layer.utils.update_model_version import update_model_version
+from model_layer.utils.api_client import get_real_time_lbmp_zonal
 
 class BaseModel(ABC):
     name: str  # set by subclass
@@ -19,11 +21,21 @@ class BaseModel(ABC):
         self.hyperparams = hyperparams
         self.model = None  # the actual fitted estimator lives here
 
-
-    @abstractmethod
-    def fetch_training_data(self,training_window_days) -> tuple[pd.Series, pd.Series]:
+    def fetch_training_data(self, training_window_days, *, start, cutoff) -> tuple[pd.Series, pd.Series]:
         """Pull whatever data this model needs from the API."""
-        ...
+        self.training_window_days = training_window_days
+
+        data = get_real_time_lbmp_zonal(start, cutoff, self.ptid)
+
+        data = data.loc[
+            (data["timestamp"] >= start)
+            & (data["timestamp"] < cutoff)
+        ]
+
+        if data.empty:
+            raise ValueError("No observations in the training window")
+        
+        return data["timestamp"], data["lbmp"]
 
     @abstractmethod
     def train(self, X, y):
@@ -39,7 +51,7 @@ class BaseModel(ABC):
     def prepare_prediction_features(self, target_timestamps):
         return None
 
-    def save(self, destination: Path, version: UUID, trained_at: datetime):
+    def save(self, destination: Path, trained_at: datetime):
         
         artifact = {
             "model_name": self.name,
@@ -64,7 +76,9 @@ class BaseModel(ABC):
             
             # move to correct path when done
             os.replace(temporary_path,destination)
-
+            
+            #Deprecated function, model_version is now updated in the job function
+            """
             # update active models database
             update_model_version(
                 version_id = str(version),
@@ -73,6 +87,7 @@ class BaseModel(ABC):
                 artifact_path = str(destination),
                 trained_at = trained_at
             )
+            """
             
         except Exception as exc:
             destination.unlink(missing_ok=True)

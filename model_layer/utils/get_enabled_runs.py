@@ -8,7 +8,8 @@ def get_enabled_runs() -> list[ForecastRun]:
         query = (
             db.query(ForecastRun) #type: ignore
             .filter(
-                ForecastRun.enabled is True
+                ForecastRun.enabled.is_(True),
+                ForecastRun.status == "running",
             )
             .all()
         )

@@ -40,26 +40,21 @@ def initialize_forecast_runs(forecast_run_path):
 
                     "end_timestamp": forecast_run.get("end_timestamp"),
 
-                    "config": {
-                            "model": forecast_run["config"],
-                            "training": forecast_run["training"],
-                            "prediction": forecast_run["prediction"],
-                    }
+                    "model_config": forecast_run["model_config"],
+                    "training_config": forecast_run["training_config"],
+                    "prediction_config": forecast_run["prediction_config"]
                 }
 
             if forecast_run.get("start_timestamp") is not None:
                 values["start_timestamp"] = forecast_run["start_timestamp"]
+            
+            db.add(ForecastRun(**values))
 
-            rows.append(values)
         
             
-
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("forecast_runs_path")
-    parser.add_argument("tasks_path")
     args = parser.parse_args()
 
     initialize_forecast_runs(args.forecast_runs_path)  # You implement this function.

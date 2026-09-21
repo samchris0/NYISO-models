@@ -2,6 +2,7 @@ import requests
 from datetime import datetime, timedelta
 
 from sqlalchemy.exc import OperationalError
+from sqlalchemy import or_
 
 from model_layer.celery.celery_app import app
 from model_layer.db.database import SessionLocal
@@ -36,8 +37,20 @@ def ingest_realtime_lbmp_zonal_task():
     retry_jitter=True,
     max_retries=5,
 )
-def create_jobs(horizon = timedelta(minutes=30)):
-     create_jobs(horizon)
+def create_jobs_task(horizon = timedelta(minutes=30)):
+    create_jobs(horizon)
+
+@app.task(
+    name="tasks.train"
+)
+def train_task(job_id: int):
+    
+    attempt_count = claim_training_job(job_id)
+
+    if attempt_count is None:
+        return
+    
+    train_model(job_id, attempt_count)
 
 @app.task(name="tasks.dispatch_training_jobs")
 def dispatch_training_jobs(batch_size=10):
@@ -46,7 +59,7 @@ def dispatch_training_jobs(batch_size=10):
     with SessionLocal() as db:
 
         rows = (
-            db.query(TrainingJob.id)
+            db.query(ForecastRun.id, TrainingJob.id) #type: ignore
             .join(ForecastRun, ForecastRun.id == TrainingJob.run_id)
             .filter(
                 ForecastRun.enabled.is_(True),
@@ -64,16 +77,9 @@ def dispatch_training_jobs(batch_size=10):
             .all()
         )
 
-    for (job_id,) in rows:
+    for run_id, job_id in rows:
         train_task.delay(job_id)
 
-@app.task
-def train_task(job_id: int):
-    
-    if not claim_training_job(job_id):
-        return
-    
-    train_model(job_id)
 
 #################### EVALUATE BELOW THIS LINE ####################
 

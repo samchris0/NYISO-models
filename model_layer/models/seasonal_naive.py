@@ -12,19 +12,6 @@ from model_layer.utils.time import now_ny
 class SeasonalNaive(BaseModel):
     type = "seasonal_naive"
 
-    def fetch_training_data(self, training_window_days):
-        self.training_window_days = training_window_days
-        
-        stop_time = now_ny().replace(hour=0, minute=0, second=0, microsecond=0)
-        start_time = stop_time-timedelta(days=training_window_days)
-
-        data = get_real_time_lbmp_zonal(start_time,stop_time,self.ptid)
-
-        X = data["timestamp"]
-        y = data["lbmp"]
-
-        return X, y
-
     def train(self, X, y):
         seasonal_period = self.training_window_days*288 #number of days times 288 for 5 min intervals
 

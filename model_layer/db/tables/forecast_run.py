@@ -7,11 +7,8 @@ class ForecastRun(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
 
-    #unique identifier
-    key = Column(String, nullable=False, unique=True)
-
     # human readable label
-    name = Column(String, nullable=False)
+    name = Column(String, nullable=False, unique=True)
 
     """
     two options
@@ -52,7 +49,9 @@ class ForecastRun(Base):
     )
 
     # configuration json read from models.yaml
-    configuration = Column(JSON, nullable=False)
+    model_config = Column(JSON, nullable=False)
+    training_config = Column(JSON, nullable=False)
+    prediction_config = Column(JSON, nullable=False)
 
     # record when the run starts
     created_at = Column(

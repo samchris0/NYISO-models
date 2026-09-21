@@ -1,6 +1,13 @@
 from sqlalchemy import exists, or_, update
 
-def claim_training_job(job_id: int) -> bool:
+from model_layer.db.database import SessionLocal
+from model_layer.db.tables.forecast_run import ForecastRun
+from model_layer.db.tables.model_version import ModelVersion
+from model_layer.db.tables.prediction_job import PredictionJob
+from model_layer.db.tables.training_job import TrainingJob
+from model_layer.utils.time import now_ny
+
+def claim_training_job(job_id: int) -> int | None:
     now = now_ny()
 
     run_is_eligible = exists().where(
@@ -28,16 +35,16 @@ def claim_training_job(job_id: int) -> bool:
             next_attempt_at = None,
             attempt_count = TrainingJob.attempt_count + 1,
         )
-        .returning(TrainingJob.id)
+        .returning(TrainingJob.attempt_count)
         .execution_options(synchronize_session=False)
     )
 
     with SessionLocal.begin() as db:
-        claimed_id = db.execute(statement).scalar_one_or_none()
+        attempt_count = db.execute(statement).scalar_one_or_none()
     
-    return claimed_id is not None
+    return attempt_count
 
-def claim_predicting_job(job_id: int)
+def claim_predicting_job(job_id: int):
     now = now_ny()
 
     run_is_eligible = exists().where(
@@ -47,14 +54,14 @@ def claim_predicting_job(job_id: int)
     )
 
     statement = (
-        update(PredictingJob)
+        update(PredictionJob)
         .where(
-            PredictingJob.id == job_id,
-            PredictingJob.status.in_(["pending","retryable"]),
-            PredictingJob.scheduled_for <= now,
+            PredictionJob.id == job_id,
+            PredictionJob.status.in_(["pending","retryable"]),
+            PredictionJob.scheduled_for <= now,
             or_(
-                PredictingJob.next_attempt_at.is_(None),
-                PredictingJob.next_attempt_at <= now
+                PredictionJob.next_attempt_at.is_(None),
+                PredictionJob.next_attempt_at <= now
             ),
             run_is_eligible,
         )
@@ -63,13 +70,13 @@ def claim_predicting_job(job_id: int)
             started_at = now,
             completed_at = None,
             next_attempt_at = None,
-            attempt_count = PredictingJob.attempt_count + 1,
+            attempt_count = PredictionJob.attempt_count + 1,
         )
-        .returning(PredictingJob.id)
+        .returning(PredictionJob.attempt_count)
         .execution_options(synchronize_session=False)
     )
 
     with SessionLocal.begin() as db:
-        claimed_id = db.execute(statement).scalar_one_or_none()
+        attempt_count = db.execute(statement).scalar_one_or_none()
     
-    return claimed_id is not None
+    return attempt_count

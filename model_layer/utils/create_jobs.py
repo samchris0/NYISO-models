@@ -4,13 +4,13 @@ from zoneinfo import ZoneInfo
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import or_
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
 
 from model_layer.db.tables.forecast_run import ForecastRun
 from model_layer.db.tables.model_version import ModelVersion
 from model_layer.db.tables.prediction_job import PredictionJob
 from model_layer.db.tables.training_job import TrainingJob
 from model_layer.utils.build_target_timestamps import build_target_timestamps
+from model_layer.utils.time import NYISO_TIMEZONE
 
 def matching_timestamps(trigger: dict, start: datetime, end: datetime,) -> list[datetime] | None:
     """Return matching New York timestamps within [start, end)."""
@@ -70,14 +70,14 @@ def matching_timestamps(trigger: dict, start: datetime, end: datetime,) -> list[
 
     return timestamps
 
-def create_missing_jobs(run, job_type, scheduled_for):
+def create_missing_jobs(db, run, job_type, scheduled_for):
     
     scheduled_for = scheduled_for.astimezone(
-        ZoneInfo
+        NYISO_TIMEZONE
     )
 
     if job_type == "training":
-        training = run.configuration["training"]
+        training = run.training_config
         days = training["training_window_days"]
 
         cutoff = scheduled_for
@@ -93,20 +93,23 @@ def create_missing_jobs(run, job_type, scheduled_for):
                 status = "pending",
             )
             .on_conflict_do_nothing(
-                constrain="uq_training_job_run_slot"
+                constraint="uq_training_job_run_slot"
             )
             .returning(TrainingJob.id)
         )
     
     elif job_type =="prediction":
-        model = run.configuration["model"]
-        prediction = run.configuration["prediction"]
+        model = run.model_config
+        prediction = run.prediction_config
+
+        step = prediction["target_step_minutes"]
+        count = prediction["forecast_intervals"]
 
         version = (
             db.query(ModelVersion)
             .filter(
                 ModelVersion.run_id == run.id,
-                ModelVersion.model_name == model["name"],
+                ModelVersion.model_name == run.name,
                 ModelVersion.ptid == model["ptid"],
                 ModelVersion.effective_start <= scheduled_for,
                 or_(
@@ -129,7 +132,7 @@ def create_missing_jobs(run, job_type, scheduled_for):
         rows = [
             {
                 "run_id": run.id,
-                "model_name": model["name"],
+                "model_name": run.name,
                 "ptid": model["ptid"],
                 "version_id": version.version_id,
                 "scheduled_for": scheduled_for,
@@ -151,4 +154,4 @@ def create_missing_jobs(run, job_type, scheduled_for):
     else:
         raise ValueError(f"Unknown job type: {job_type!r}")
 
-    return list(db.execute(statement).scalars()) #type:ignore
+    return list(db.execute(statement).scalars())

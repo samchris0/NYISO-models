@@ -1,6 +1,5 @@
 forecast_runs:
-  - key: seasonal-naive-live
-    name: seasonal naive live
+  - name: seasonal-naive-live
     mode: live
     enabled: true
 
@@ -12,7 +11,7 @@ forecast_runs:
       ptid: 61757
       hyperparameters: {}
 
-    training:
+    training_config:
       trigger:
         type: cron
         timezone: America/New_York
@@ -20,7 +19,7 @@ forecast_runs:
         minutes: "0"
       training_window_days: 1
 
-    prediction:
+    prediction_config:
       trigger:
         type: cron
         timezone: America/New_York

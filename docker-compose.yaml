@@ -47,7 +47,7 @@ services:
     command:
       - python
       - -m
-      - model_layer.init_models
+      - model_layer.init_forecasting
       - /app/model_layer/forecast_runs.yaml
     environment:
       DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
@@ -176,6 +176,34 @@ services:
         condition: service_started
       nyiso-api:
         condition: service_started
+
+  creating-jobs-worker:
+    build: .
+    command:
+      - celery
+      - -A
+      - model_layer.celery.celery_app:app
+      - worker
+      - --queues=creating_jobs
+      - --concurrency=1
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      NYISO_API_BASE_URL: http://nyiso-api:5050
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
+      nyiso-api:
+        condition: service_started
+      model-db-init:
+        condition: service_completed_successfully
+      forecast-run-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./model_layer:/app/model_layer
+      - model_artifacts:/app/model_layer/artifacts
 
   scheduler:
     build: .

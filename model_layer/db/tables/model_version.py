@@ -45,12 +45,4 @@ class ModelVersion(Base):
         nullable=True
     )
 
-    __table_args__ = (
-        Index(
-            "uq_active_model_per_type_ptid",
-            "model_name",
-            "ptid",
-            unique=True,
-            postgresql_where=active.is_(True),
-        ),
-    )
+
