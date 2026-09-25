@@ -12,18 +12,18 @@ from model_layer.db.tables.training_job import TrainingJob
 from model_layer.utils.build_target_timestamps import build_target_timestamps
 from model_layer.utils.time import NYISO_TIMEZONE
 
-def matching_timestamps(trigger: dict, start: datetime, end: datetime,) -> list[datetime] | None:
-    """Return matching New York timestamps within [start, end)."""
-
+def build_cron_trigger(trigger):
+    
     allowed_fields = {
-        "type",
-        "timezone",
-        "minutes",
-        "hours",
-        "day_of_week",
-        "day_of_month",
-        "month_of_year",
-    }
+            "type",
+            "timezone",
+            "minutes",
+            "hours",
+            "day_of_week",
+            "day_of_month",
+            "month_of_year",
+        }
+    
     unknown_fields = set(trigger) - allowed_fields
     if unknown_fields:
         raise ValueError(
@@ -42,6 +42,26 @@ def matching_timestamps(trigger: dict, start: datetime, end: datetime,) -> list[
         month=trigger.get("month_of_year", "*"),
         second=0,
     )
+
+    return cron
+
+def next_training_slot(trigger, scheduled_for):
+    cron = build_cron_trigger(trigger)
+
+    next_slot = cron.get_next_fire_time(
+        previous_fire_time=scheduled_for,
+        now=scheduled_for,
+    )
+
+    if next_slot is None:
+        raise ValueError("Training trigger has no future matching timestamp")
+    
+    return next_slot.astimezone(ZoneInfo("America/New_York"))
+
+def matching_timestamps(trigger: dict, start: datetime, end: datetime,) -> list[datetime] | None:
+    """Return matching New York timestamps within [start, end)."""
+
+    cron = build_cron_trigger(trigger)
 
     start_utc = start.astimezone(timezone.utc)
     end_utc = end.astimezone(timezone.utc)
@@ -132,8 +152,6 @@ def create_missing_jobs(db, run, job_type, scheduled_for):
         rows = [
             {
                 "run_id": run.id,
-                "model_name": run.name,
-                "ptid": model["ptid"],
                 "version_id": version.version_id,
                 "scheduled_for": scheduled_for,
                 "target_timestamp": target.to_pydatetime(),

@@ -6,6 +6,7 @@ class Prediction(Base):
     __tablename__ = "prediction"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    job_id = Column(Integer, ForeignKey("prediction_job.id"), nullable=False)
 
     version_id = Column(String, ForeignKey("model_version.version_id"), nullable=False)
     model_name = Column(String, nullable=False)
@@ -25,6 +26,7 @@ class Prediction(Base):
             "version_id",
             "ptid",
             "target_timestamp",
+            "job_id",
             name="uq_prediction_identity",
         ),
     )

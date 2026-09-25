@@ -48,7 +48,7 @@ def claim_predicting_job(job_id: int):
     now = now_ny()
 
     run_is_eligible = exists().where(
-        ForecastRun.id == TrainingJob.run_id,
+        ForecastRun.id == PredictionJob.run_id,
         ForecastRun.enabled.is_(True),
         ForecastRun.status == "running"
     )

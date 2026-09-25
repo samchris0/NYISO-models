@@ -13,7 +13,7 @@ app = Celery(
 
 app.conf.task_queues = (
     Queue("ingesting"),
-    Queue("creating_jobs"),
+    Queue("create_jobs"),
     Queue("training"),
     Queue("predicting"),
     Queue("updating"),
@@ -25,10 +25,13 @@ app.conf.task_routes = {
         "queue": "ingesting"
     },
     "tasks.create_jobs" : {
-        "queue": "creating_jobs"
+        "queue": "create_jobs"
     },
     "tasks.dispatch_training_jobs" : {
         "queue": "creating_jobs"
+    },
+    "tasks.dispatch_prediction_jobs" : {
+        "queue": "create_jobs"
     },
     "tasks.train": {
         "queue": "training",

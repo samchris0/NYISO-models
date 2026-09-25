@@ -29,7 +29,7 @@ load_dotenv()
 def train_model(job_id: int, attempt_count: int):
     
     MAX_ATTEMPTS = 5
-    
+
     try: 
         with SessionLocal() as db: 
 
@@ -43,7 +43,7 @@ def train_model(job_id: int, attempt_count: int):
             )
 
             if result is None:
-                raise ValueError(f"Training job {job_id} not in run {job_id}")
+                raise ValueError(f"Training job {job_id} does not exist")
             
             job, run = result
             
@@ -234,20 +234,7 @@ def predict_model(config: dict):
 def update_model():
     pass
 
-def evaluate_pending_predictions(batch_size: int = 1000) -> int:
-    pending_predictions = get_pending_predictions(
-        available_before=now_ny() - timedelta(minutes=10),
-        limit=batch_size,
-    )
 
-    if not pending_predictions:
-        return 0
-
-    actuals = fetch_actuals(pending_predictions)
-
-    num_evaluated = evaluate_predictions(actuals,pending_predictions)
-    
-    return num_evaluated
 
 def ingest_lbmp_zonal():
     base_url = os.getenv(
