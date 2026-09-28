@@ -63,10 +63,11 @@ def save_prediction(version_id: str,
         ):
             raise RuntimeError("This attempt no longer owns the job")
         
+        if job.version_id != version_id:
+            raise RuntimeError("Prediction version differs from the assigned version")
         db.execute(statement)
         
         job.status = "succeeded"
         job.completed_at = now_ny()
-        job.version_id = version_id
         job.next_attempt_at = None
         job.last_error = None

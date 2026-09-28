@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+import math
 
 from sqlalchemy import update
 
@@ -11,6 +12,7 @@ def evaluate_predictions(actuals: dict[tuple[int, datetime], float],
                          predictions: list[Prediction]) -> int:
     evaluated_at = now_ny()
     updates = []
+    update_count = 0
 
     for prediction in predictions:
         key = (
@@ -19,10 +21,19 @@ def evaluate_predictions(actuals: dict[tuple[int, datetime], float],
         )
         actual = actuals.get(key)
 
-        if actual is None:
-            continue
+        if actual is None or not math.isfinite(float(actual)):
+            updates.append(
+                {
+                    "id": prediction.id,
+                    "evaluation_attempts": prediction.evaluation_attempts+1,
+                    "next_evaluation_attempt": (
+                        evaluated_at+timedelta(minutes=20)
+                    ),
+                }
+            )
+            continue            
 
-        actual = float(actual)
+        actual = float(actual) #type: ignore
         predicted = float(prediction.predicted_lbmp)
         error = actual - predicted
 
@@ -35,6 +46,7 @@ def evaluate_predictions(actuals: dict[tuple[int, datetime], float],
                 "squared_error": error**2,
             }
         )
+        update_count+=1
 
     if not updates:
         return 0
@@ -45,4 +57,4 @@ def evaluate_predictions(actuals: dict[tuple[int, datetime], float],
             updates,
         )
 
-    return len(updates)
+    return update_count

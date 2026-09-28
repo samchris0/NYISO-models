@@ -21,12 +21,17 @@ services:
   
   nyiso-api:
     build: .
-    command: python -u -m nyiso_api.main
+    command:
+      - gunicorn
+      - --bind=0.0.0.0:5050
+      - --workers=1
+      - --timeout=120
+      - --access-logfile=-
+      - --error-logfile=-
+      - "nyiso_api.main:create_app()"
     env_file: .env
     environment:
       DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
-    volumes:
-      - ./nyiso_api:/app/nyiso_api
     ports:
       - "5001:5050"
     depends_on:
@@ -51,12 +56,13 @@ services:
       - /app/model_layer/forecast_runs.yaml
     environment:
       DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
-    volumes:
-      - ./model_layer:/app/model_layer:ro
+    #volumes:
+    # - ./model_layer/forecast_runs.yaml:/app/model_layer/forecast_runs.yaml:ro
     depends_on:
       model-db-init:
         condition: service_completed_successfully
     restart: "no"
+    
 
   training-worker:
     build: .
@@ -81,7 +87,6 @@ services:
       model-db-init:
         condition: service_completed_successfully
     volumes:
-      - ./model_layer:/app/model_layer
       - model_artifacts:/app/model_layer/artifacts
 
   predicting-worker:
@@ -107,7 +112,6 @@ services:
       model-db-init:
         condition: service_completed_successfully
     volumes:
-      - ./model_layer:/app/model_layer
       - model_artifacts:/app/model_layer/artifacts
 
   updating-worker:
@@ -133,7 +137,6 @@ services:
       model-db-init:
         condition: service_completed_successfully
     volumes:
-      - ./model_layer:/app/model_layer
       - model_artifacts:/app/model_layer/artifacts
 
   evaluating-worker:
@@ -169,6 +172,7 @@ services:
       - --queues=ingesting
       - --concurrency=1
     environment:
+      DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
       CELERY_BROKER_URL: redis://redis:6379/0
       NYISO_API_BASE_URL: http://nyiso-api:5050
     depends_on:
@@ -184,7 +188,7 @@ services:
       - -A
       - model_layer.celery.celery_app:app
       - worker
-      - --queues=creating_jobs
+      - --queues=create_jobs
       - --concurrency=1
     environment:
       DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
@@ -201,23 +205,6 @@ services:
         condition: service_completed_successfully
       forecast-run-init:
         condition: service_completed_successfully
-    volumes:
-      - ./model_layer:/app/model_layer
-      - model_artifacts:/app/model_layer/artifacts
-
-  scheduler:
-    build: .
-    command:
-      - celery
-      - -A
-      - model_layer.celery.celery_app:app
-      - beat
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/0
-    depends_on:
-      redis:
-        condition: service_started
-
 
 volumes:
   postgres_data:

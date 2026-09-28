@@ -2,7 +2,7 @@ from datetime import timedelta
 from dotenv import load_dotenv
 
 import pandas as pd
-from sqlalchemy import update, and_
+from sqlalchemy import update, and_, or_
 
 from model_layer.db.database import SessionLocal
 from model_layer.db.tables.forecast_run import ForecastRun
@@ -18,7 +18,7 @@ def predict_model(job_id: int, attempt_count: int):
     MAX_ATTEMPTS = 5
 
     try: 
-        with SessionLocal() as db: 
+        with SessionLocal.begin() as db: 
 
             result = (
                 db.query(PredictionJob, ForecastRun) #type: ignore
@@ -26,6 +26,7 @@ def predict_model(job_id: int, attempt_count: int):
                 .filter(
                     PredictionJob.id == job_id
                 )
+                .with_for_update(of=PredictionJob)
                 .one_or_none()
             )
 
@@ -39,27 +40,59 @@ def predict_model(job_id: int, attempt_count: int):
             model_name = run.name
 
             version_id = job.version_id
+            scheduled_for = job.scheduled_for
 
             target_timestamp = pd.DatetimeIndex([job.target_timestamp])
-
-        with SessionLocal() as db:
             
-            current_version = (
-                db.query(ModelVersion) #type: ignore
-                .filter(
-                    ModelVersion.version_id == version_id,
-                    ModelVersion.run_id == run_id,
+            if job.version_id is None:
+                
+                current_version = (
+                    db.query(ModelVersion) #type: ignore
+                    .filter(
+                        ModelVersion.run_id == run_id,
+                        ModelVersion.effective_start <= scheduled_for,
+                        or_(
+                            ModelVersion.effective_end.is_(None),
+                            ModelVersion.effective_end > scheduled_for,
+                        ),
+                    )
+                    .order_by(ModelVersion.effective_start.desc())
+                    .first()
                 )
-                .one_or_none()
-            )
 
-            if current_version:
+                if current_version:
 
-                active_artifact = current_version.artifact_path
-                version_id = current_version.version_id
+                    version_id = current_version.version_id
+                    
+                    if job.status != "running" or job.attempt_count != attempt_count:
+                        raise RuntimeError("This attempt no longer owns the job")
+
+                    job.version_id = version_id
+                    active_artifact = current_version.artifact_path
+                    
+                else:
+                    raise ValueError("No valid model trained for this time")
             
             else:
-                raise ValueError("No valid model trained for this time")
+
+                version_id = job.version_id
+
+                current_version = (
+                    db.query(ModelVersion) #type: ignore
+                    .filter(
+                        ModelVersion.run_id == run_id,
+                        ModelVersion.version_id == version_id,
+                    )
+                    .one_or_none()
+                )
+                
+                if current_version is None:
+                    raise ValueError(f"Assigned model version {version_id} does not exist")
+
+                if job.status != "running" or job.attempt_count != attempt_count:
+                    raise RuntimeError("This attempt no longer owns the job")
+
+                active_artifact = current_version.artifact_path
         
         model_type = model_config["model_type"]
         ptid = model_config["ptid"]
@@ -128,4 +161,3 @@ def predict_model(job_id: int, attempt_count: int):
             )
         
         raise
-

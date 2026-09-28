@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Float, DateTime, Integer, ForeignKey, UniqueConstraint
+from sqlalchemy.sql import func
 
 from model_layer.db.database import Base
 
@@ -21,11 +22,11 @@ class Prediction(Base):
     absolute_error = Column(Float, nullable=True)
     squared_error = Column(Float, nullable=True)
 
+    evaluation_attempts = Column(Integer, nullable=False, default=0)
+    next_evaluation_attempt = Column(DateTime(timezone=True), nullable=False, default = func.now())
+
     __table_args__ = (
         UniqueConstraint(
-            "version_id",
-            "ptid",
-            "target_timestamp",
             "job_id",
             name="uq_prediction_identity",
         ),

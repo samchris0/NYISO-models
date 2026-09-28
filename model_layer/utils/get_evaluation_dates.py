@@ -15,7 +15,7 @@ def get_evaluation_dates(pending_predictions: list[Prediction],
             prediction.target_timestamp
         )
 
-        key = (prediction.ptid, target)
+        key = (prediction.ptid, target.date())
         groups[key].append(prediction)
 
     return dict(groups)
@@ -44,7 +44,7 @@ def fetch_actuals(
         )
 
         for row in data.itertuples():
-            timestamp = row.timestamp.to_pydatetime()
+            timestamp = row.timestamp.to_pydatetime() #type: ignore
             actuals[(ptid, timestamp)] = row.lbmp
 
     return actuals

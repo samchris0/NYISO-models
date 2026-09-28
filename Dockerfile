@@ -4,7 +4,8 @@ WORKDIR /app
 
 RUN pip install uv
 
-COPY pyproject.toml .
-RUN uv pip install --system .
-
 COPY . .
+
+RUN uv sync --locked --no-dev
+
+ENV PATH="/app/.venv/bin:$PATH"

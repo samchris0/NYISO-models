@@ -8,6 +8,7 @@ from model_layer.celery.celery_app import app
 from model_layer.db.database import SessionLocal
 from model_layer.db.tables import *
 from model_layer.celery.jobs.create_jobs import create_jobs
+from model_layer.celery.jobs.evaluate_predictions import evaluate_pending_predictions
 from model_layer.celery.jobs.ingest_lbmp_zonal import ingest_lbmp_zonal
 from model_layer.celery.jobs.predict_model import predict_model
 from model_layer.celery.jobs.train_model import train_model
@@ -114,13 +115,6 @@ def predict_task(job_id: int):
     
     predict_model(job_id, attempt_count)
 
-
-#################### EVALUATE BELOW THIS LINE ####################
-
-
-
-
-
 @app.task(
     name = "tasks.update"
 )
@@ -129,13 +123,6 @@ def update_task(config: dict):
 
 @app.task(
     name="tasks.evaluate",
-    autoretry_for=(
-        requests.RequestException,
-        OperationalError,
-    ),
-    retry_backoff=True,
-    retry_jitter=True,
-    max_retries=5,
 )
 def evaluate_task(batch_size: int = 500) -> int:
     return evaluate_pending_predictions(batch_size=batch_size)

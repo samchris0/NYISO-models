@@ -8,7 +8,7 @@ def init_db(retries=5, delay=2):
     for attempt in range(retries):
         try:
             # drop all tables, keep in development to allow for changes, remove in deployment
-            Base.metadata.drop_all()
+            Base.metadata.drop_all(bind=engine) #type: ignore
             Base.metadata.create_all(bind=engine) #type: ignore
             print("Database initialized.")
             return

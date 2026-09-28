@@ -28,7 +28,7 @@ app.conf.task_routes = {
         "queue": "create_jobs"
     },
     "tasks.dispatch_training_jobs" : {
-        "queue": "creating_jobs"
+        "queue": "create_jobs"
     },
     "tasks.dispatch_prediction_jobs" : {
         "queue": "create_jobs"

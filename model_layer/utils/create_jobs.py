@@ -124,24 +124,6 @@ def create_missing_jobs(db, run, job_type, scheduled_for):
 
         step = prediction["target_step_minutes"]
         count = prediction["forecast_intervals"]
-
-        version = (
-            db.query(ModelVersion)
-            .filter(
-                ModelVersion.run_id == run.id,
-                ModelVersion.model_name == run.name,
-                ModelVersion.ptid == model["ptid"],
-                ModelVersion.effective_start <= scheduled_for,
-                or_(
-                    ModelVersion.effective_end.is_(None),
-                    ModelVersion.effective_end > scheduled_for,
-                ),
-            )
-            .one_or_none()
-        )
-
-        if version is None:
-            return None
         
         targets = build_target_timestamps(
             start_time_floor=scheduled_for,
@@ -152,7 +134,6 @@ def create_missing_jobs(db, run, job_type, scheduled_for):
         rows = [
             {
                 "run_id": run.id,
-                "version_id": version.version_id,
                 "scheduled_for": scheduled_for,
                 "target_timestamp": target.to_pydatetime(),
                 "status": "pending",

@@ -39,11 +39,11 @@ def train_model(job_id: int, attempt_count: int):
             training_config = dict(run.training_config)
             run_id = run.id
 
-            scheduled_for = job.scheduled_for
             training_start = job.training_data_start
             training_cutoff = job.training_data_cutoff
 
         # Close db connection
+
         model_type = model_config["model_type"]
         ptid = model_config["ptid"]
         model_name = run.name
@@ -73,7 +73,7 @@ def train_model(job_id: int, attempt_count: int):
                 ForecastRun.id == run_id
             ).with_for_update().one()
             
-            job = (
+            completed_job = (
                 db.query(TrainingJob) #type: ignore
                 .filter(
                     TrainingJob.id == job_id,
@@ -83,33 +83,39 @@ def train_model(job_id: int, attempt_count: int):
                 .one()
             )
 
-            if job.status != "running" or job.attempt_count != attempt_count:
-                raise RuntimeError(f"Training jobs in race condition")
+            if completed_job.status != "running" or completed_job.attempt_count != attempt_count:
+                raise RuntimeError(f"This attempt no longer owns the job")
 
-            versions = (
-                        db.query(ModelVersion) #type: ignore
+            current = (
+                        db.query(ModelVersion, TrainingJob) #type: ignore
+                        .join(
+                            TrainingJob,
+                            ModelVersion.training_job_id == TrainingJob.id
+                        )
                         .filter(
-                                ModelVersion.run_id.run_id == run_id,
-                                ModelVersion.model_name == model_name,
-                                ModelVersion.ptid == ptid,
-                                )
+                            ModelVersion.run_id == run_id,
+                            ModelVersion.model_name == model_name,
+                            ModelVersion.ptid == ptid,
+                            ModelVersion.effective_start.is_not(None),
+                            ModelVersion.effective_end.is_(None),
+                            )
+                        .one_or_none()
             )
             
-            previous_version = (
-                versions.filter(ModelVersion.effective_start < scheduled_for)
-                .order_by(ModelVersion.effective_start.desc())
-                .first()
-            )
+            if current is None:
+                current_version = None
+                promote_model_version = True
+            else:
+                current_version, current_version_job = current
+                promote_model_version = (
+                    current_version is None 
+                    or completed_job.training_data_cutoff > current_version_job.training_data_cutoff
+                )
 
-            next_version = (
-                versions.filter(ModelVersion.effective_start > scheduled_for)
-                .order_by(ModelVersion.effective_start.asc())
-                .first()
-            )
+            activation_time = now_ny() if promote_model_version else None
 
-            if previous_version is not None:
-                previous_version.effective_end = scheduled_for
-
+            if promote_model_version and current_version is not None:
+                current_version.effective_end = activation_time
 
             db.add(
                 ModelVersion( 
@@ -121,19 +127,14 @@ def train_model(job_id: int, attempt_count: int):
                     ptid=ptid, #type: ignore
                     artifact_path=str(artifact_path), #type: ignore
                     trained_at=completed_at, #type: ignore
-                    effective_start=scheduled_for, #type: ignore
-                    effective_end=( #type: ignore
-                            next_version.scheduled_for 
-                            if next_version is not None
-                            else None
+                    effective_start=activation_time #type: ignore
                     ), 
-                ),
-            )
-
-            job.status = "succeeded"
-            job.completed_at = now_ny()
-            job.next_attempt_at = None
-            job.last_error = None
+            ),
+            
+            completed_job.status = "succeeded"
+            completed_job.completed_at = now_ny()
+            completed_job.next_attempt_at = None
+            completed_job.last_error = None
 
     except Exception as exc:
         failed_at = now_ny()

@@ -1,3 +1,6 @@
+from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
+
 from sqlalchemy import Column, String, Float, DateTime, Integer, Boolean, Index, ForeignKey
 from sqlalchemy.sql import func
 
@@ -32,17 +35,14 @@ class ModelVersion(Base):
     trained_at = Column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=func.now(),
     )
 
     effective_start = Column(
         DateTime(timezone=True),
-        nullable=False,
+        nullable=True,
     )
 
     effective_end = Column(
         DateTime(timezone=True),
         nullable=True
     )
-
-
