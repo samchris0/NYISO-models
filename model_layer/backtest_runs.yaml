@@ -1,0 +1,29 @@
+forecast_runs:
+  - name: seasonal-naive-live
+    mode: live
+    enabled: true
+
+    start_timestamp: null #"2026-09-11T00:00:00-04:00"
+    end_timestamp: null
+
+    model_config:
+      model_type: seasonal_naive
+      ptid: 61757
+      hyperparameters: {}
+
+    training_config:
+      trigger:
+        type: cron
+        timezone: America/New_York
+        hours: "0"
+        minutes: "0"
+      training_window_days: 1
+
+    prediction_config:
+      trigger:
+        type: cron
+        timezone: America/New_York
+        hours: "*"
+        minutes: "*/5"
+      target_step_minutes: 5
+      forecast_intervals: 1

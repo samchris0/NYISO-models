@@ -101,7 +101,10 @@ def predict_model(job_id: int, attempt_count: int):
         model = model_class(name=model_name, ptid=ptid, hyperparams=model_config.get("hyperparameters", {}))
         
         model.load(active_artifact)
-        features = model.prepare_prediction_features(target_timestamp)
+        features = model.prepare_prediction_features(
+            target_timestamp,
+            scheduled_for=scheduled_for,
+        )
 
         predictions = model.predict(target_timestamp, features)
     

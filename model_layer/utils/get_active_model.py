@@ -8,11 +8,10 @@ from model_layer.db.tables.model_version import ModelVersion
 def get_active_model(model_name: str, ptid: int):
     with SessionLocal.begin() as db:
         current = (
-            db.query(ModelVersion)
+            db.query(ModelVersion) #type: ignore
             .filter(
                 ModelVersion.model_name == model_name,
                 ModelVersion.ptid == ptid,
-                ModelVersion.active.is_(True),
             )
             .one_or_none()
         )

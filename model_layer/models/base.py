@@ -28,11 +28,11 @@ class BaseModel(ABC):
         data = get_real_time_lbmp_zonal(start, cutoff, self.ptid)
 
         data = data.loc[
-            (data["timestamp"] >= start)
-            & (data["timestamp"] < cutoff)
+            (data["timestamp"] > start)
+            & (data["timestamp"] <= cutoff)
         ]
 
-        if data.empty:
+        if data.empty or not data["timestamp"].eq(cutoff).any():
             raise ValueError("No observations in the training window")
         
         return data["timestamp"], data["lbmp"]
@@ -48,7 +48,7 @@ class BaseModel(ABC):
         """Return an array of predicted values."""
         ...
 
-    def prepare_prediction_features(self, target_timestamps):
+    def prepare_prediction_features(self, target_timestamps, scheduled_for):
         return None
 
     def save(self, destination: Path, trained_at: datetime):
