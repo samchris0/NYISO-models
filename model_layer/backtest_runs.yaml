@@ -1,10 +1,10 @@
 forecast_runs:
-  - name: seasonal-naive-live
-    mode: live
+  - name: seasonal-naive-backtest
+    mode: historical
     enabled: true
 
-    start_timestamp: null #"2026-09-11T00:00:00-04:00"
-    end_timestamp: null
+    start_timestamp: 2026-08-01T00:00:00-04:00
+    end_timestamp: 2026-09-01T00:00:00-04:00
 
     model_config:
       model_type: seasonal_naive
