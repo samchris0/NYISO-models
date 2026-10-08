@@ -27,13 +27,18 @@ class BaseModel(ABC):
 
         data = get_real_time_lbmp_zonal(start, cutoff, self.ptid)
 
-        data = data.loc[
-            (data["timestamp"] > start)
-            & (data["timestamp"] <= cutoff)
-        ]
+        # An empty API response may have no columns.
+        if not data.empty:
+            data = data.loc[
+                (data["timestamp"] > start)
+                & (data["timestamp"] <= cutoff)
+            ].dropna(subset=["lbmp"])
 
-        if data.empty or not data["timestamp"].eq(cutoff).any():
-            raise ValueError("No observations in the training window")
+        if data.empty:
+            raise ValueError(
+                f"No usable observations for PTID {self.ptid} "
+                f"in training window ({start}, {cutoff}]"
+            )
         
         return data["timestamp"], data["lbmp"]
 

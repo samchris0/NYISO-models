@@ -47,7 +47,10 @@ class SeasonalNaive(BaseModel):
 
         source_timestamps = target_timestamps - timedelta(days=seasonal_period/288)
 
-        values = history.reindex(source_timestamps)
+        values = history.reindex(
+            source_timestamps,
+            method="ffill",
+        )
 
         if values.isna().any():
             missing = source_timestamps[values.isna()]
@@ -60,5 +63,4 @@ class SeasonalNaive(BaseModel):
             index=target_timestamps,
             name="predicted_lbmp",
         )
-        
         

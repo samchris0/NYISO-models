@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NYISO · Price forecast observatory</title>
+  <meta name="description" content="Explore NYISO zonal electricity prices, forecast accuracy, and model comparisons from recorded experiments.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="vendor/plotly.min.js"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="./"><span class="mark">N<span>↗</span></span>NYISO <span class="brand-light">/ FORECAST OBSERVATORY</span></a><span class="snapshot">● Published results</span></header>
+  <main>
+    <section class="intro"><div><p class="eyebrow">ENERGY MARKETS · MODEL EVALUATION</p><h1>How well can we<br>forecast electricity prices?</h1><p class="lede">Explore observed zonal prices and the models trying to predict them.<br>Choose a period. Compare the forecasts. Look beyond the average.</p></div><aside class="intro-note"><span class="note-number">05<span>min</span></span><p>Explore forecast horizons<br>All times in New York</p><p id="updated" class="muted">Loading snapshot…</p></aside></section>
+    <div id="message" role="status" aria-live="polite" class="message">Loading recorded results…</div>
+    <section class="filters panel" aria-label="Filter results">
+      <label>ZONE / PTID<select id="zone"></select></label>
+      <label>EXPERIMENT<select id="mode"><option value="historical">Backtests</option><option value="live">Live forecasts</option></select></label>
+      <label>HORIZON<select id="horizon"></select></label>
+      <label>FROM<input type="date" id="start"></label>
+      <label>THROUGH<input type="date" id="end"></label>
+      <button id="reset" class="button secondary">Full period</button>
+    </section>
+    <section class="model-section"><div class="section-label">COMPARE RUNS</div><div id="models" class="model-options"></div></section>
+    <section class="kpis" aria-label="Selected period summary">
+      <article><span>OBSERVED PRICE · MEAN</span><strong id="mean">—</strong><small>$/MWh · published observations</small></article>
+      <article><span>OBSERVED PRICE · PEAK</span><strong id="peak">—</strong><small>$/MWh · selected period</small></article>
+      <article><span>EVALUATION TARGETS</span><strong id="samples">—</strong><small id="sample-caption">Matching evaluated targets</small></article>
+      <article><span>LOWEST MAE</span><strong id="best">—</strong><small id="best-name">Select a model to compare</small></article>
+    </section>
+    <section class="panel chart-panel"><div class="panel-heading"><div><p class="eyebrow">01 / PRICE TRAJECTORY</p><h2>Actuals & forecasts</h2><p>Drag to zoom. Double-click to reset. Metrics follow the date filters, not chart zoom.</p></div><button id="download" class="button secondary">Download selection ↓</button></div><div id="price-chart" class="chart" aria-label="Actual and predicted LBMP line chart"></div><p class="chart-note">Actuals are published observations at export time; metric calculations use each prediction’s saved evaluation actual. Missing observations are shown as gaps.</p></section>
+    <section class="panel metrics-panel"><div class="panel-heading"><div><p class="eyebrow">02 / FORECAST ACCURACY</p><h2>Model comparison</h2><p>MAE, RMSE and bias in $/MWh. Lower MAE and RMSE are better.</p></div><label class="comparison-label">EVALUATE ON<select id="comparison"><option value="common">Common evaluated targets</option><option value="available">Each run’s available targets</option></select></label></div><div class="table-scroll"><table><thead><tr><th>Run</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>Scored</th><th>Succeeded / jobs</th><th>Evaluated / jobs</th></tr></thead><tbody id="metrics"></tbody></table></div><p id="coverage-note" class="chart-note"></p></section>
+    <section class="panel chart-panel"><div class="panel-heading"><div><p class="eyebrow">03 / ERROR THROUGH TIME</p><h2>Daily absolute error</h2><p>Daily MAE on the same scoring sample used in the table. Identify difficult days, not just difficult models.</p></div></div><div id="error-chart" class="chart short" aria-label="Daily mean absolute error"></div></section>
+    <section class="bottom-grid"><article class="panel methodology"><p class="eyebrow">READING THE RESULTS</p><h2>A fair comparison</h2><p>By default, models are scored only where every selected run has a successful, evaluated prediction for the same origin and target. Changing the models may therefore change the scoring sample.</p><p>Bias is prediction minus actual: negative means underprediction. Coverage counts stored jobs, not all theoretically expected schedule slots. Dates include the full selected New York calendar days.</p><p>Historical runs are retrospective backtests. Their scores do not establish that source observations or trained artifacts were available in real time. Recorded live forecasts are shown separately.</p></article><article class="panel"><p class="eyebrow">EXPERIMENT DETAILS</p><h2>Behind the lines</h2><div id="run-details"></div></article></section>
+    <footer><span>NYISO Forecast Observatory · Independent portfolio project</span><span>Read-only snapshot · No forecasts are started by this page</span></footer>
+  </main>
+</body>
+</html>

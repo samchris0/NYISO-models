@@ -1,5 +1,6 @@
 services:
   redis:
+    profiles: ["live"]
     image: redis:7
     ports:
       - "6379:6379"
@@ -48,6 +49,7 @@ services:
         condition: service_healthy
 
   forecast-run-init:
+    profiles: ["live"]
     build: .
     command:
       - python
@@ -65,6 +67,7 @@ services:
     
 
   training-worker:
+    profiles: ["live"]
     build: .
     command:
       - celery
@@ -90,6 +93,7 @@ services:
       - model_artifacts:/app/model_layer/artifacts
 
   predicting-worker:
+    profiles: ["live"]
     build: .
     command:
       - celery
@@ -115,6 +119,7 @@ services:
       - model_artifacts:/app/model_layer/artifacts
 
   updating-worker:
+    profiles: ["live"]
     build: .
     command:
       - celery
@@ -140,6 +145,7 @@ services:
       - model_artifacts:/app/model_layer/artifacts
 
   evaluating-worker:
+    profiles: ["live"]
     build: .
     command:
       - celery
@@ -163,6 +169,7 @@ services:
         condition: service_completed_successfully
 
   ingesting-worker:
+    profiles: ["live"]
     build: .
     command:
       - celery
@@ -182,6 +189,7 @@ services:
         condition: service_started
 
   creating-jobs-worker:
+    profiles: ["live"]
     build: .
     command:
       - celery
@@ -205,6 +213,44 @@ services:
         condition: service_completed_successfully
       forecast-run-init:
         condition: service_completed_successfully
+
+  scheduler:
+    profiles: ["live"]
+    build: .
+    command:
+      - celery
+      - -A
+      - model_layer.celery.celery_app:app
+      - beat
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
+      CELERY_BROKER_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_started
+      forecast-run-init:
+        condition: service_completed_successfully
+
+  backtest:
+    profiles: ["historical"]
+    build: .
+    command:
+      - python
+      - -m
+      - model_layer.backtest
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@db:5432/${PG_DATABASE}"
+      NYISO_API_BASE_URL: http://nyiso-api:5050
+    volumes:
+      - model_artifacts:/app/model_layer/artifacts
+    depends_on:
+      db:
+        condition: service_healthy
+      nyiso-api:
+        condition: service_started
+      model-db-init:
+        condition: service_completed_successfully
+    restart: "no"
 
 volumes:
   postgres_data:

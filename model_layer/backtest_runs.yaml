@@ -27,3 +27,64 @@ forecast_runs:
         minutes: "*/5"
       target_step_minutes: 5
       forecast_intervals: 1
+
+  - name: seasonal-median-august-backtest
+    mode: historical
+    enabled: true
+
+    start_timestamp: 2026-08-01T00:00:00-04:00
+    end_timestamp: 2026-09-01T00:00:00-04:00
+
+    model_config:
+      model_type: seasonal_median
+      ptid: 61757
+      hyperparameters: {}
+
+    training_config:
+      trigger:
+        type: cron
+        timezone: America/New_York
+        hours: "0"
+        minutes: "0"
+      training_window_days: 63
+
+    prediction_config:
+      trigger:
+        type: cron
+        timezone: America/New_York
+        hours: "*"
+        minutes: "*/5"
+      target_step_minutes: 5
+      forecast_intervals: 1
+  
+  - name: fourier-ridge-august-backtest
+    mode: historical
+    enabled: true
+
+    start_timestamp: 2026-08-01T00:00:00-04:00
+    end_timestamp: 2026-09-01T00:00:00-04:00
+
+    model_config:
+      model_type: fourier_ridge
+      ptid: 61757
+      hyperparameters:
+        daily_harmonics: 4
+        weekly_harmonics: 3
+        alpha: 10.0
+
+    training_config:
+      trigger:
+        type: cron
+        timezone: America/New_York
+        hours: "0"
+        minutes: "0"
+      training_window_days: 60
+
+    prediction_config:
+      trigger:
+        type: cron
+        timezone: America/New_York
+        hours: "*"
+        minutes: "*/5"
+      target_step_minutes: 5
+      forecast_intervals: 1

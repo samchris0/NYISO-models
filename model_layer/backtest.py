@@ -1,20 +1,24 @@
 from pathlib import Path
+from datetime import timedelta
 
 import pandas as pd
 
 from sqlalchemy import or_
-
 
 from model_layer.celery.jobs.train_model import train_model
 from model_layer.celery.jobs.predict_model import predict_model
 from model_layer.db.database import SessionLocal
 from model_layer.db.tables import ForecastRun
 from model_layer.db.tables import ModelVersion
+from model_layer.db.tables import Prediction
 from model_layer.db.tables import PredictionJob
 from model_layer.db.tables import TrainingJob
 from model_layer.init_forecasting import initialize_forecast_runs
+from model_layer.utils.api_client import ingest_real_time_lbmp_zonal
 from model_layer.utils.claim_jobs import claim_predicting_job, claim_training_job
 from model_layer.utils.create_jobs import matching_timestamps, create_missing_jobs
+from model_layer.utils.get_evaluation_dates import fetch_actuals
+from model_layer.utils.evaluate_predictions import evaluate_predictions
 
 def main():
     backtest_yaml = Path("model_layer/backtest_runs.yaml")
@@ -32,7 +36,7 @@ def main():
             .all()
         )
         run_ids = [run_id for (run_id,) in rows]
-
+    
     for run_id in run_ids:
         
         with SessionLocal.begin() as db:
@@ -50,6 +54,12 @@ def main():
             training_config = dict(run.training_config)
             prediction_config = dict(run.prediction_config)
             current_version_id = None
+
+        ingest_real_time_lbmp_zonal(
+            start=start-timedelta(days=training_config["training_window_days"]),
+            end = stop+timedelta(minutes=
+                                 prediction_config["target_step_minutes"]*prediction_config["forecast_intervals"]),
+        )
 
         prediction_events = matching_timestamps(prediction_config["trigger"], start, stop)
         training_events = matching_timestamps(training_config["trigger"], start, stop)
@@ -166,6 +176,8 @@ def main():
                     
                     predict_model(job_id,attempt_count)
 
+        evaluate_backtest(run_id)
+
         with SessionLocal.begin() as db:
             completed_run = (
                 db.query(ForecastRun) #type: ignore
@@ -174,6 +186,38 @@ def main():
             )
             completed_run.status = "completed"
 
+
+def evaluate_backtest(run_id: int) -> int:
+    with SessionLocal() as db:
+        predictions = (
+            db.query(Prediction) #type: ignore
+            .join(
+                PredictionJob,
+                PredictionJob.id == Prediction.job_id,
+            )
+            .filter(
+                PredictionJob.run_id == run_id,
+                PredictionJob.status == "succeeded",
+                Prediction.evaluated_at.is_(None)
+            )
+            .order_by(Prediction.target_timestamp, Prediction.id)
+            .all()
+        )
+
+        if not predictions:
+            return 0
+
+        actuals = fetch_actuals(predictions)
+        evaluated_count = evaluate_predictions(actuals, predictions)
+
+        if evaluated_count != len(predictions):
+            missing_count = len(predictions) - evaluated_count
+            raise RuntimeError(
+                f"Run {run_id}: {missing_count} predictions could not "
+                "be evaluated because actuals were missing or non-finite"                
+            )
+        
+        return evaluated_count
 
 if __name__ == "__main__":
     main()
